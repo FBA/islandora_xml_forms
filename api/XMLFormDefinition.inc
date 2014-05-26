@@ -511,6 +511,8 @@ class XMLFormDefinition {
                             $subject_dsid = $autocompleteFieldValue;
                           } else if (!strcmp($autocompleteFieldName,"subject_namespace_info")) {
                             $subject_namespace_info = $autocompleteFieldValue;
+                          } else if (!strcmp($autocompleteFieldName,"subject_xpath_title_search")) {
+                            $subject_xpath_title_search = $autocompleteFieldValue;
                           } else if (!strcmp($autocompleteFieldName,"subject_xpath_data_search")) {
                             $subject_xpath_data_search = $autocompleteFieldValue;
                           } else if (!strcmp($autocompleteFieldName,"object_creation_required")) {
@@ -556,7 +558,7 @@ class XMLFormDefinition {
                         // the form.
 
                         $rdfRelationshipsUnserialized = variable_get('rdf_relationships', NULL);
-                        $rdfRelationshipsUnserialized[] = array("form_token"=>$_POST[form_token], "field_path"=>$localPath, "rdf_predicate"=>$rdfRelation, "object_pid_append_required"=>$object_pid_append_required, "sparql_field"=>$sparql_field, "subject_dsid"=>$subject_dsid, "subject_namespace_info"=>$subject_namespace_info, "subject_xpath_data_search"=>$subject_xpath_data_search, "object_creation_required"=>$object_creation_required, "inverse_required"=>$inverse_required, "symmetry_in_object_datastream_required"=>$symmetry_in_object_datastream_required, "object_dsid"=>$object_dsid, "object_namespace_info"=>$object_namespace_info, "object_datastream_xml"=>$object_datastream_xml, "object_xpath_title_search"=>$object_xpath_title_search, "object_xpath_date_create_search"=>$object_xpath_date_create_search, "object_content_model_pid"=>$object_content_model_pid, "object_collection_pid"=>$object_collection_pid, "object_namespace_prefix"=>$object_namespace_prefix, "object_transform"=>$object_transform, "object_state"=>$object_state, "object_xpath_data_search"=>$object_xpath_data_search, "object_xpath_data_build"=>$object_xpath_data_build, "object_xpath_data_build_countback"=>$object_xpath_data_build_countback);
+                        $rdfRelationshipsUnserialized[] = array("form_token"=>$_POST[form_token], "field_path"=>$localPath, "rdf_predicate"=>$rdfRelation, "object_pid_append_required"=>$object_pid_append_required, "sparql_field"=>$sparql_field, "subject_dsid"=>$subject_dsid, "subject_namespace_info"=>$subject_namespace_info, "subject_xpath_title_search"=>$subject_xpath_title_search, "subject_xpath_data_search"=>$subject_xpath_data_search, "object_creation_required"=>$object_creation_required, "inverse_required"=>$inverse_required, "symmetry_in_object_datastream_required"=>$symmetry_in_object_datastream_required, "object_dsid"=>$object_dsid, "object_namespace_info"=>$object_namespace_info, "object_datastream_xml"=>$object_datastream_xml, "object_xpath_title_search"=>$object_xpath_title_search, "object_xpath_date_create_search"=>$object_xpath_date_create_search, "object_content_model_pid"=>$object_content_model_pid, "object_collection_pid"=>$object_collection_pid, "object_namespace_prefix"=>$object_namespace_prefix, "object_transform"=>$object_transform, "object_state"=>$object_state, "object_xpath_data_search"=>$object_xpath_data_search, "object_xpath_data_build"=>$object_xpath_data_build, "object_xpath_data_build_countback"=>$object_xpath_data_build_countback);
                         variable_set('rdf_relationships', $rdfRelationshipsUnserialized);
                       }
                     }
@@ -585,15 +587,14 @@ class XMLFormDefinition {
    *   The name that identifies the autocomplete row in the table
    * 
    * @return array
-   *   Contains the rdf_relation and a field that indicates whether 
-   *   inverse rdf processing is required.
+   *   Contains the rdf_relation data.
    *
    * FBA MODIFICATION BY NBYWELL on 21/01/2014
    */
 
   private function getAutocompleteData($autocompleteName) {
 
-    $result = db_query('select ias.rdf_relationship,ias.object_pid_append_required,ias.sparql_field,ias.subject_dsid, ias.subject_namespace_info,ias.subject_xpath_data_search,ias.object_creation_required,ias.inverse_required,ias.symmetry_in_object_datastream_required,ias.object_dsid,ias.object_namespace_info,ias.object_datastream_xml,ias.object_xpath_title_search,ias.object_xpath_date_create_search,ias.object_content_model_pid,ias.object_collection_pid,ias.object_namespace_prefix,ias.object_transform,ias.object_state,ias.object_xpath_data_search,ias.object_xpath_data_build,ias.object_xpath_data_build_countback from islandora_autocomplete ia join islandora_autocomplete_sparql ias on ia.id=ias.url_id where ia.name like "%s" and ia.source = "sparql" and ias.rdf_relationship <> ""', $autocompleteName);
+    $result = db_query('select ias.rdf_relationship,ias.object_pid_append_required,ias.sparql_field,ias.subject_dsid,ias.subject_namespace_info,ias.subject_xpath_title_search,ias.subject_xpath_data_search,ias.object_creation_required,ias.inverse_required,ias.symmetry_in_object_datastream_required,ias.object_dsid,ias.object_namespace_info,ias.object_datastream_xml,ias.object_xpath_title_search,ias.object_xpath_date_create_search,ias.object_content_model_pid,ias.object_collection_pid,ias.object_namespace_prefix,ias.object_transform,ias.object_state,ias.object_xpath_data_search,ias.object_xpath_data_build,ias.object_xpath_data_build_countback from islandora_autocomplete ia join islandora_autocomplete_sparql ias on ia.id=ias.url_id where ia.name like "%s" and ia.source = "sparql" and ias.rdf_relationship <> ""', $autocompleteName);
     return $result !== FALSE ? db_fetch_object($result) : FALSE;
   }
 

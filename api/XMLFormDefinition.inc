@@ -346,10 +346,13 @@ class XMLFormDefinition {
    * 
    * @return array
    *   The extracted form declaration from the XML Form Definition. This is also a valid Drupal form.
-   * FBA MODIFICATION BY NBYWELL on 16/01/2014 to collect
+   * FBA MODIFICATION BY NBYWELL on 27/05/2014 to collect
    * autocomplete data that is necessary for object linking.
-   * The currentPath info is not actually used, but it is
-   * useful when debugging.
+   * Set a flag to indicate whether the table that stores
+   * the the object-linking-autocomplete-data exists so 
+   * that no attempt to access it is made when it does not
+   * exist. The currentPath info is not actually used, but
+   * it is useful when debugging.
    */
   public function getForm() {
     if (variable_get('rdf_relationships', NULL)) {
@@ -358,8 +361,20 @@ class XMLFormDefinition {
     $definition = simplexml_import_dom($this->definition);
     $currentPath = "";
     $depth = 0;
-    return $this->getElement($definition->form, $currentPath, $depth);
+    $sparqlAutocompleteTableExists = 0;
+    $sparqlTable = 'islandora_autocomplete_sparql';
+
+    $result = db_query('select count(*) from information_schema.tables where table_schema = (select database()) and table_name = "%s"', $sparqlTable);
+    if ($result !== FALSE) {
+      $querySchemaResults = db_fetch_object($result);
+      foreach ($querySchemaResults as $querySchemaResult) {
+        $sparqlAutocompleteTableExists = $querySchemaResult;
+      }
+    }
+      
+    return $this->getElement($definition->form, $currentPath, $depth, $sparqlAutocompleteTableExists);
   }
+
 
   /**
    * Creates an XMLDocument instance from the properties stored within the XML Form Definition.
@@ -421,9 +436,9 @@ class XMLFormDefinition {
    * FBA MODIFICATION BY NBYWELL on 16/01/2014 to collect autocomplete data that is necessary for object linking.
    */
 
-  private function getElement(SimpleXMLElement $element, &$currentPath, &$depth) {
-    $properties = $this->getElementProperties($element, $currentPath, $depth);
-    return array_merge($properties, $this->getElementChildren($element, &$currentPath, &$depth));
+  private function getElement(SimpleXMLElement $element, &$currentPath, &$depth, $sparqlAutocompleteTableExists) {
+    $properties = $this->getElementProperties($element, $currentPath, $depth, $sparqlAutocompleteTableExists);
+    return array_merge($properties, $this->getElementChildren($element, &$currentPath, &$depth, $sparqlAutocompleteTableExists));
   }
 
   /**
@@ -438,7 +453,7 @@ class XMLFormDefinition {
    * FBA MODIFICATION BY NBYWELL on 16/01/2014 to collect autocomplete data that is necessary for object linking.
    */
 
-  private function getElementProperties(SimpleXMLElement $element, &$currentPath, &$depth) {
+  private function getElementProperties(SimpleXMLElement $element, &$currentPath, &$depth, $sparqlAutocompleteTableExists) {
     $output = array();
     $autocompleteProperty = 'autocomplete_path';
     $fieldIdentifier = '';
@@ -499,7 +514,7 @@ class XMLFormDefinition {
                     if ($autocompleteFound && (empty($element->children))) {
                       $autocompleteFound = false;
 
-                      if ($autocompleteData = self::getAutocompleteData($autocompleteName)) {
+                      if ($autocompleteData = self::getAutocompleteData($autocompleteName, $sparqlAutocompleteTableExists)) {
                         foreach ($autocompleteData as $autocompleteFieldName => $autocompleteFieldValue) {
                           if (!strcmp($autocompleteFieldName,"rdf_relationship")) {
                             $rdfRelation = $autocompleteFieldValue;
@@ -592,10 +607,14 @@ class XMLFormDefinition {
    * FBA MODIFICATION BY NBYWELL on 21/01/2014
    */
 
-  private function getAutocompleteData($autocompleteName) {
+  private function getAutocompleteData($autocompleteName, $sparqlAutocompleteTableExists) {
 
-    $result = db_query('select ias.rdf_relationship,ias.object_pid_append_required,ias.sparql_field,ias.subject_dsid,ias.subject_namespace_info,ias.subject_xpath_title_search,ias.subject_xpath_data_search,ias.object_creation_required,ias.inverse_required,ias.symmetry_in_object_datastream_required,ias.object_dsid,ias.object_namespace_info,ias.object_datastream_xml,ias.object_xpath_title_search,ias.object_xpath_date_create_search,ias.object_content_model_pid,ias.object_collection_pid,ias.object_namespace_prefix,ias.object_transform,ias.object_state,ias.object_xpath_data_search,ias.object_xpath_data_build,ias.object_xpath_data_build_countback from islandora_autocomplete ia join islandora_autocomplete_sparql ias on ia.id=ias.url_id where ia.name like "%s" and ia.source = "sparql" and ias.rdf_relationship <> ""', $autocompleteName);
-    return $result !== FALSE ? db_fetch_object($result) : FALSE;
+    if ($sparqlAutocompleteTableExists) {
+      $result = db_query('select ias.rdf_relationship,ias.object_pid_append_required,ias.sparql_field,ias.subject_dsid,ias.subject_namespace_info,ias.subject_xpath_title_search,ias.subject_xpath_data_search,ias.object_creation_required,ias.inverse_required,ias.symmetry_in_object_datastream_required,ias.object_dsid,ias.object_namespace_info,ias.object_datastream_xml,ias.object_xpath_title_search,ias.object_xpath_date_create_search,ias.object_content_model_pid,ias.object_collection_pid,ias.object_namespace_prefix,ias.object_transform,ias.object_state,ias.object_xpath_data_search,ias.object_xpath_data_build,ias.object_xpath_data_build_countback from islandora_autocomplete ia join islandora_autocomplete_sparql ias on ia.id=ias.url_id where ia.name like "%s" and ia.source = "sparql" and ias.rdf_relationship <> ""', $autocompleteName);
+      return $result !== FALSE ? db_fetch_object($result) : FALSE;
+    } else {
+      return FALSE;
+    }
   }
 
   /**
@@ -650,14 +669,14 @@ class XMLFormDefinition {
    * FBA MODIFICATION BY NBYWELL on 16/01/2014 to collect autocomplete data that is necessary for object linking.
    */
 
-  private function getElementChildren(SimpleXMLElement $element, &$currentPath, &$depth) {
+  private function getElementChildren(SimpleXMLElement $element, &$currentPath, &$depth, $sparqlAutocompleteTableExists) {
     $output = array();
     if (isset($element->children)) {
       $depth += 1;
       $elements = $element->children->children();
       foreach ($elements as $element) {
         $key = isset($element['name']) ? (string) $element['name'] : NULL;
-        array_add($output, $key, $this->getElement($element, $currentPath, $depth));
+        array_add($output, $key, $this->getElement($element, $currentPath, $depth, $sparqlAutocompleteTableExists));
       }
       $depth -= 1;
       if ($depth == 1) {
